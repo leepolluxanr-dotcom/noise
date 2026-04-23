@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoiseLock</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+KR:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #f5f5f3;
+  --surface: #ffffff;
+  --surface2: #f0f0ee;
+  --border: #e0e0dc;
+  --border2: #d0d0cc;
+  --text: #1a1a1a;
+  --muted: #999;
+  --muted2: #666;
+  --danger: #cc3333;
+  --success: #2a7a2a;
+  --mono: 'DM Mono', monospace;
+  --sans: 'Noto Sans KR', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); font-weight: 400; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* Header */
+header { display: flex; align-items: center; justify-content: space-between; padding: 15px 36px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.logo { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
+.logo span { color: var(--muted); }
+
+
+
+/* Layout */
+main { flex: 1; display: grid; grid-template-columns: 400px 1fr; min-height: 0; }
+.left { background: var(--surface); border-right: 1px solid var(--border); padding: 28px 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+.right { padding: 28px 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+
+.lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+
+/* Upload */
+.upload { border: 1px dashed var(--border2); border-radius: 8px; padding: 22px; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); }
+.upload:hover, .upload.over { border-color: var(--text); background: var(--surface2); }
+.upload.has { padding: 12px 16px; border-style: solid; border-color: var(--border); background: var(--surface); cursor: default; }
+
+.up-icon { width: 26px; height: 26px; margin: 0 auto 8px; color: var(--muted); }
+.up-t { font-size: 13px; color: var(--muted2); margin-bottom: 3px; }
+.up-s { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* File uploaded state */
+.file-row { display: none; align-items: center; gap: 10px; text-align: left; }
+.file-row.show { display: flex; }
+.f-badge {
+  display: flex; align-items: center; gap: 6px;
+  background: #edf7ed; border: 1px solid #b8ddb8; border-radius: 5px;
+  padding: 3px 8px; flex-shrink: 0;
+}
+.f-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+.f-badge-txt { font-family: var(--mono); font-size: 9px; color: var(--success); letter-spacing: 0.08em; }
+.f-info { flex: 1; min-width: 0; }
+.f-name { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.f-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+.f-rm { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; flex-shrink: 0; transition: color 0.15s; padding: 2px 4px; }
+.f-rm:hover { color: var(--danger); }
+input[type=file] { display: none; }
+
+/* Fields */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.field input { border: 1px solid var(--border); border-radius: 6px; padding: 8px 11px; font-size: 13px; color: var(--text); background: var(--bg); outline: none; transition: border-color 0.15s; font-family: var(--sans); }
+.field input:focus { border-color: var(--text); background: var(--surface); }
+.field input::placeholder { color: var(--muted); }
+
+.fn-box { border: 1px solid var(--border); border-radius: 6px; padding: 8px 11px; font-family: var(--mono); font-size: 10px; color: var(--muted2); background: var(--surface2); word-break: break-all; line-height: 1.5; }
+
+/* Count */
+.count-row { display: flex; align-items: center; justify-content: space-between; }
+.count-ctrl { display: flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.c-btn { background: none; border: none; color: var(--text); padding: 6px 13px; cursor: pointer; font-size: 15px; transition: background 0.1s; }
+.c-btn:hover { background: var(--surface2); }
+.c-num { font-family: var(--mono); font-size: 13px; padding: 6px 14px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-width: 40px; text-align: center; }
+
+/* Process */
+.proc-btn { width: 100%; padding: 11px; background: var(--text); color: #fff; border: none; border-radius: 7px; font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.proc-btn:hover:not(:disabled) { background: #333; }
+.proc-btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; }
+
+.prog { display: none; margin-top: 14px; }
+.prog.show { display: flex; align-items: center; gap: 10px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 2px solid var(--border2);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.prog-steps { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.prog-step-lbl { font-family: var(--mono); font-size: 11px; color: var(--text); }
+.prog-step-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* Right empty */
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; gap: 10px; }
+.empty svg { opacity: 0.25; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.card-head { display: flex; align-items: center; justify-content: space-between; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+.card-lbl { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.card-fn { font-family: var(--mono); font-size: 10px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+
+/* Player */
+.player-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.seek { position: relative; height: 26px; cursor: pointer; background: var(--surface2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.seek-fill { position: absolute; top: 0; left: 0; bottom: 0; background: #e4e4e0; pointer-events: none; }
+.seek-handle { position: absolute; top: 50%; width: 9px; height: 9px; background: var(--text); border-radius: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+.n-tick { position: absolute; top: 0; bottom: 0; width: 2px; background: #cc5533; opacity: 0.65; pointer-events: none; }
+.n-tick-lbl { position: absolute; top: 2px; left: 3px; font-family: var(--mono); font-size: 8px; color: #cc5533; }
+.t-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* Transport */
+.transport { display: flex; align-items: center; gap: 12px; }
+.play-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border2); background: var(--surface2); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.play-btn:hover { border-color: var(--text); }
+.play-btn.playing { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* Noise volume — 5 steps */
+.beep-vol { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.beep-top { display: flex; align-items: center; justify-content: space-between; }
+.beep-lbl { font-size: 12px; color: var(--muted2); }
+.beep-steps { display: flex; gap: 4px; }
+.step-btn {
+  font-family: var(--mono); font-size: 10px; padding: 3px 6px;
+  border: 1px solid var(--border2); border-radius: 4px;
+  background: var(--bg); color: var(--muted2); cursor: pointer; transition: all 0.12s;
+  min-width: 32px; text-align: center;
+}
+.step-btn:hover { border-color: var(--text); color: var(--text); }
+.step-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+/* Jump */
+.jump-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.j-btn { font-family: var(--mono); font-size: 11px; padding: 3px 9px; border-radius: 4px; border: 1px solid #e0c8c0; background: #faf4f2; color: #884422; cursor: pointer; transition: all 0.12s; }
+.j-btn:hover { background: #f5e8e0; border-color: #cc7755; }
+
+/* Timestamps */
+.ts-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 1px; }
+.ts-line { font-family: var(--mono); font-size: 13px; color: var(--text); letter-spacing: 0.03em; line-height: 1.8; }
+
+.copy-btn { font-family: var(--mono); font-size: 10px; color: var(--muted2); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 3px 9px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px; }
+.copy-btn:hover { border-color: var(--text); color: var(--text); }
+.copy-btn.ok { border-color: var(--success); color: var(--success); }
+
+/* Confirm */
+.confirm-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; }
+.dl-btn { width: 100%; padding: 10px; background: var(--text); color: #fff; border: none; border-radius: 6px; font-family: var(--mono); font-size: 12px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px; transition: background 0.15s; }
+.dl-btn:hover:not(:disabled) { background: #333; }
+.dl-btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; }
+.retry-btn { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: none; color: var(--muted2); font-family: var(--mono); font-size: 11px; cursor: pointer; transition: all 0.12s; }
+.retry-btn:hover { border-color: var(--text); color: var(--text); }
+
+/* Download result */
+.dl-result { display: none; flex-direction: column; gap: 6px; padding: 12px 16px; border-top: 1px solid var(--border); }
+.dl-result.show { display: flex; }
+.dl-result-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; margin-bottom: 2px; }
+.dl-file { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.dl-file-icon { font-family: var(--mono); font-size: 9px; font-weight: 500; padding: 2px 6px; border-radius: 3px; flex-shrink: 0; }
+.dl-file-icon.mp3 { background: #edf0ff; color: #3355cc; border: 1px solid #c8d0f0; }
+.dl-file-icon.txt { background: #f0f5ee; color: #3a6e2a; border: 1px solid #c0d8b8; }
+.dl-file-name { font-family: var(--mono); font-size: 10px; color: var(--muted2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.dl-file-check { font-size: 12px; color: var(--success); flex-shrink: 0; }
+
+/* Toast */
+.toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; padding: 8px 14px; border-radius: 6px; font-family: var(--mono); font-size: 11px; opacity: 0; transition: all 0.2s; pointer-events: none; z-index: 99; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok { background: var(--success); }
+.toast.err { background: var(--danger); }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">NoiseLock<span>.sys</span></div>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div class="left">
+
+    <!-- 01 Upload -->
+    <div>
+      <div class="lbl">01 — 음원 업로드</div>
+      <div class="upload" id="upZone"
+        onclick="onUploadClick()"
+        ondragover="onDragOver(event)" ondragleave="onDragLeave()" ondrop="onDrop(event)">
+        <svg class="up-icon" id="upIcon" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M24 32V16M24 16l-6 6M24 16l6 6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M8 32v4a4 4 0 004 4h24a4 4 0 004-4v-4" stroke-linecap="round"/>
+        </svg>
+        <div class="up-t" id="upT">클릭하거나 파일을 드래그</div>
+        <div class="up-s" id="upS">MP3 · WAV · FLAC · AAC</div>
+        <div class="file-row" id="fileRow">
+          <div class="f-badge">
+            <div class="f-badge-dot"></div>
+            <span class="f-badge-txt">업로드 완료</span>
+          </div>
+          <div class="f-info">
+            <div class="f-name" id="fName">—</div>
+            <div class="f-meta" id="fMeta">—</div>
+          </div>
+          <button class="f-rm" onclick="removeFile(event)">×</button>
+        </div>
+      </div>
+      <input type="file" id="fi" accept=".mp3,.wav,.flac,.aac,audio/*" onchange="onFileSelect(this.files[0])">
+    </div>
+
+    <!-- 02 Metadata -->
+    <div style="display:flex;flex-direction:column;gap:9px">
+      <div class="lbl" style="margin-bottom:0">02 — 메타데이터</div>
+      <div class="field"><label>곡 제목</label><input type="text" id="songTitle" placeholder="곡명" oninput="updateFn()"></div>
+      <div class="field"><label>보내는 곳</label><input type="text" id="recipient" placeholder="예: A&amp;R실" oninput="updateFn()"></div>
+      <div class="field"><label>받는 곳</label><input type="text" id="receiver" placeholder="예: 팀명_이름" oninput="updateFn()"></div>
+      <div class="field"><label>반출 사유</label><input type="text" id="reason" placeholder="예: 안무제작" oninput="updateFn()"></div>
+      <div>
+        <div class="lbl" style="margin-bottom:5px">파일명</div>
+        <div class="fn-box" id="fnBox" style="color:var(--muted)">—</div>
+      </div>
+    </div>
+
+    <!-- 03 Count -->
+    <div>
+      <div class="lbl">03 — 삽입 횟수</div>
+      <div class="count-row">
+        <span style="font-size:13px;color:var(--muted2)">곡 전반 균등 분산 · 최대 15회</span>
+        <div class="count-ctrl">
+          <button class="c-btn" onclick="changeCount(-1)">−</button>
+          <div class="c-num" id="cNum">7</div>
+          <button class="c-btn" onclick="changeCount(1)">+</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Process -->
+    <div>
+      <button class="proc-btn" id="procBtn" onclick="processAudio()" disabled>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        노이즈 삽입 시작
+      </button>
+      <div class="prog" id="prog">
+        <div class="spinner"></div>
+        <div class="prog-steps">
+          <div class="prog-step-lbl" id="pLbl">처리 중...</div>
+          <div class="prog-step-sub" id="pSub"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right">
+
+    <div class="empty" id="emptyState">
+      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/>
+      </svg>
+      <span>처리 후 미리듣기가 여기에 표시됩니다</span>
+    </div>
+
+    <!-- Player -->
+    <div class="card" id="playerCard" style="display:none">
+      <div class="card-head">
+        <span class="card-lbl">미리듣기</span>
+        <span class="card-fn" id="playerFn">—</span>
+      </div>
+      <div class="player-body">
+        <div class="seek" id="seekWrap" onclick="handleSeek(event)">
+          <div class="seek-fill" id="seekFill" style="width:0%"></div>
+          <div class="seek-handle" id="seekHandle" style="left:0%"></div>
+          <div id="nTicks"></div>
+        </div>
+        <div class="t-row"><span id="curT">00:00</span><span id="totT">00:00</span></div>
+
+        <!-- Transport + Beep vol -->
+        <div class="transport">
+          <button class="play-btn" id="playBtn" onclick="togglePlay()">
+            <svg id="iPlay" width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <svg id="iPause" width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+          </button>
+          <div class="beep-vol">
+            <div class="beep-top">
+              <span class="beep-lbl">노이즈 볼륨</span>
+            </div>
+            <div class="beep-steps" id="stepBtns">
+              <!-- rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Jump -->
+        <div>
+          <div class="lbl" style="margin-bottom:6px">노이즈 위치로 이동 (−2초)</div>
+          <div class="jump-list" id="jumpList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timestamps -->
+    <div class="card" id="tsCard" style="display:none">
+      <div class="card-head">
+        <span class="card-lbl">삽입 위치</span>
+        <button class="copy-btn" id="copyBtn" onclick="copyTs()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          복사
+        </button>
+      </div>
+      <div class="ts-list" id="tsList"></div>
+    </div>
+
+    <!-- Confirm -->
+    <div class="card" id="confirmCard" style="display:none">
+      <div class="confirm-body">
+        <button class="dl-btn" id="dlBtn" onclick="confirmDl()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round"/></svg>
+          다운로드 확정
+        </button>
+        <div id="dlNotice" style="display:none;font-family:var(--mono);font-size:10px;color:var(--muted);text-align:center;line-height:1.5;">노이즈 음원과 텍스트 파일 생성에<br>30초 정도 소요될 수 있습니다.</div>
+        <button class="retry-btn" onclick="retry()">초기화 (음원 포함)</button>
+      </div>
+      <div class="dl-result" id="dlResult">
+        <div class="dl-result-label">생성된 파일</div>
+        <div class="dl-file">
+          <span class="dl-file-icon mp3">MP3</span>
+          <span class="dl-file-name" id="dlMp3Name">—</span>
+          <span class="dl-file-check">✓</span>
+        </div>
+        <div class="dl-file">
+          <span class="dl-file-icon txt">TXT</span>
+          <span class="dl-file-name" id="dlTxtName">—</span>
+          <span class="dl-file-check">✓</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/lamejs@1.2.1/lame.min.js"></script>
+<script>
+const BEEP_B64 = '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';
+
+// 노이즈 볼륨 6단계: 10% 20% 40% 60% 80% 100%
+const VOL_STEPS = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0];
+const VOL_LABELS = ['10%', '20%', '40%', '60%', '80%', '100%'];
+
+let audioFile = null, audioBuffer = null, noiseCount = 7;
+let pendingBlob = null, pendingFilename = '', pendingTimestamps = [];
+let rawChannels = null, rawSr = 44100;
+let beepCache = null;
+let noisePositions = [];  // cached sample positions
+let currentStepIdx = 3;  // default 60%
+let dbConnected = false, dbToken = null; // reserved for future integration
+
+// Web Audio mixer state
+let actx = null;          // shared AudioContext
+let srcClean = null;      // BufferSource — original (no noise)
+let srcNoise = null;      // BufferSource — noise-only track
+let gainNoise = null;     // GainNode controlling noise level
+let mixStartTime = 0;     // actx.currentTime when play started
+let mixOffset = 0;        // track position in seconds when play started
+let isPlaying = false;
+let totalDuration = 0;
+let rafId = null;
+let cleanBuffer = null;   // AudioBuffer — original
+let noiseBuffer = null;   // AudioBuffer — noise-only (beep at full amp at positions)
+
+// Init step buttons
+(function initSteps() {
+  const wrap = document.getElementById('stepBtns');
+  VOL_LABELS.forEach((lbl, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'step-btn' + (i === currentStepIdx ? ' active' : '');
+    btn.textContent = lbl;
+    btn.onclick = () => selectStep(i);
+    wrap.appendChild(btn);
+  });
+})();
+
+function selectStep(idx) {
+  if (idx === currentStepIdx) return;
+  currentStepIdx = idx;
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('active', i === idx));
+  if (gainNoise) gainNoise.gain.setTargetAtTime(VOL_STEPS[idx], actx.currentTime, 0.01);
+}
+
+// Dropbox removed
+
+// File
+function onUploadClick() {
+  if (!document.getElementById('upZone').classList.contains('has'))
+    document.getElementById('fi').click();
+}
+function onFileSelect(f) {
+  if (!f) return;
+  audioFile = f; audioBuffer = null;
+  document.getElementById('fName').textContent = f.name;
+  document.getElementById('fMeta').textContent = fmtB(f.size);
+  document.getElementById('fileRow').classList.add('show');
+  document.getElementById('upIcon').style.display = 'none';
+  document.getElementById('upT').style.display = 'none';
+  document.getElementById('upS').style.display = 'none';
+  document.getElementById('upZone').classList.add('has');
+  checkReady();
+  // Decode for duration preview — reuse or create a temporary context
+  const tmpCtx = new AudioContext();
+  f.arrayBuffer().then(ab => tmpCtx.decodeAudioData(ab).then(buf => {
+    audioBuffer = buf;
+    document.getElementById('fMeta').textContent = `${fmtB(f.size)} · ${fmt(buf.duration)} · ${buf.sampleRate}Hz`;
+    tmpCtx.close();
+  }).catch(() => tmpCtx.close()));
+}
+function removeFile(e) {
+  e.stopPropagation();
+  audioFile = null; audioBuffer = null;
+  document.getElementById('fileRow').classList.remove('show');
+  document.getElementById('upIcon').style.display = '';
+  document.getElementById('upT').style.display = '';
+  document.getElementById('upS').style.display = '';
+  document.getElementById('upZone').classList.remove('has');
+  document.getElementById('fi').value = '';
+  retry(); checkReady();
+}
+function onDragOver(e) { e.preventDefault(); document.getElementById('upZone').classList.add('over'); }
+function onDragLeave() { document.getElementById('upZone').classList.remove('over'); }
+function onDrop(e) {
+  e.preventDefault(); document.getElementById('upZone').classList.remove('over');
+  const f = e.dataTransfer.files[0]; if (f) onFileSelect(f);
+}
+function updateFn() {
+  const t   = document.getElementById('songTitle').value.trim();
+  const to_ = document.getElementById('receiver').value.trim();
+  const from_ = document.getElementById('recipient').value.trim();
+  const reason = document.getElementById('reason').value.trim();
+  const box = document.getElementById('fnBox');
+  if (t || to_) {
+    box.textContent = `${ds()}_${t || '곡제목'}_노이즈_${to_ || '받는곳'}.mp3`;
+    box.style.color = '';
+  } else {
+    box.textContent = '—';
+    box.style.color = 'var(--muted)';
+  }
+  checkReady();
+}
+function checkReady() {
+  const t      = document.getElementById('songTitle').value.trim();
+  const from_  = document.getElementById('recipient').value.trim();
+  const to_    = document.getElementById('receiver').value.trim();
+  const reason = document.getElementById('reason').value.trim();
+  document.getElementById('procBtn').disabled = !(audioFile && t && from_ && to_ && reason);
+}
+function changeCount(d) {
+  noiseCount = Math.max(1, Math.min(15, noiseCount + d));
+  document.getElementById('cNum').textContent = noiseCount;
+}
+
+// ── Core process
+const yield_ = () => new Promise(r => setTimeout(r, 0)); // yield to UI thread
+
+async function processAudio() {
+  if (!audioFile) return;
+  const title   = document.getElementById('songTitle').value.trim();
+  const to_     = document.getElementById('receiver').value.trim();
+  pendingFilename = `${ds()}_${title}_노이즈_${to_}.mp3`;
+
+  stopMixer();
+  setProcState(true);
+  try {
+    if (!actx || actx.state === 'closed') actx = new AudioContext();
+
+    setP('음원 디코딩 중...', '파일을 분석하고 있어요');
+    await yield_();
+    if (!audioBuffer) {
+      const ab = await audioFile.arrayBuffer();
+      audioBuffer = await actx.decodeAudioData(ab);
+    }
+    const buf = audioBuffer;
+    const numCh = buf.numberOfChannels, len = buf.length, sr = buf.sampleRate;
+    rawChannels = Array.from({length: numCh}, (_, c) => new Float32Array(buf.getChannelData(c)));
+    rawSr = sr;
+
+    setP('노이즈 샘플 준비 중...', 'Beep 신호를 로딩하고 있어요');
+    await yield_();
+    if (!beepCache) beepCache = await loadBeep(sr, numCh);
+    const bLen = beepCache[0].length;
+
+    setP('삽입 위치 계산 중...', `${noiseCount}개 구간에 균등 배분`);
+    await yield_();
+    const margin = sr * 2, usable = len - margin * 2 - bLen;
+    const seg = Math.floor(usable / noiseCount);
+    pendingTimestamps = Array.from({length: noiseCount}, (_, n) =>
+      (margin + n * seg + Math.floor(Math.random() * seg)) / sr
+    );
+
+    setP('트랙 믹싱 중...', '원본과 노이즈 트랙을 분리하고 있어요');
+    await yield_();
+    cleanBuffer = buf;
+    noisePositions = pendingTimestamps.map(t => Math.round(t * sr));
+    const noiseChannels = Array.from({length: numCh}, () => new Float32Array(len));
+    for (const pos of noisePositions) {
+      for (let c = 0; c < numCh; c++) {
+        const bc = beepCache[c % beepCache.length];
+        for (let s = 0; s < bLen; s++) {
+          if (pos + s < len) noiseChannels[c][pos + s] += bc[s];
+        }
+      }
+    }
+    noiseBuffer = actx.createBuffer(numCh, len, sr);
+    for (let c = 0; c < numCh; c++) noiseBuffer.copyToChannel(noiseChannels[c], c);
+    totalDuration = buf.duration;
+
+    setP('MP3 인코딩 중...', '다운로드용 파일을 생성하고 있어요');
+    await yield_();
+    pendingBlob = await buildBlob(VOL_STEPS[currentStepIdx]);
+
+    setP('완료', '');
+    await yield_();
+    showPreview(pendingFilename);
+    showToast('미리듣기 준비 완료', 'ok');
+  } catch(e) {
+    console.error(e); showToast('처리 실패: ' + e.message, 'err');
+  } finally {
+    setTimeout(() => setProcState(false), 600);
+  }
+}
+
+// Build MP3 blob for download
+async function buildBlob(amp) {
+  const numCh = rawChannels.length, len = rawChannels[0].length;
+  const bLen = beepCache[0].length;
+  const out = rawChannels.map(ch => ch.slice()); // slice()가 new Float32Array(ch)보다 빠름
+  for (const pos of noisePositions) {
+    for (let c = 0; c < numCh; c++) {
+      const bc = beepCache[c % beepCache.length];
+      const ch = out[c];
+      const end = Math.min(pos + bLen, len);
+      for (let s = pos; s < end; s++) {
+        const v = ch[s] + bc[s - pos] * amp;
+        ch[s] = v < -1 ? -1 : v > 1 ? 1 : v; // 인라인 clamp
+      }
+    }
+  }
+  return encodeMp3(out, rawSr, len);
+}
+
+async function loadBeep(targetSr, numCh) {
+  const bin = atob(BEEP_B64);
+  const ab = new ArrayBuffer(bin.length); const u8 = new Uint8Array(ab);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+
+  // Decode using the shared actx (already running at correct sample rate)
+  const decoded = await actx.decodeAudioData(ab);
+  let ch0;
+  if (decoded.sampleRate === targetSr) {
+    ch0 = new Float32Array(decoded.getChannelData(0));
+  } else {
+    // Resample via OfflineAudioContext
+    const tLen = Math.round(decoded.length * targetSr / decoded.sampleRate);
+    const off = new OfflineAudioContext(1, tLen, targetSr);
+    const src = off.createBufferSource(); src.buffer = decoded;
+    src.connect(off.destination); src.start(0);
+    const r = await off.startRendering();
+    ch0 = new Float32Array(r.getChannelData(0));
+  }
+  return Array.from({length: numCh}, () => ch0);
+}
+
+function encodeMp3(channels, sr, length) {
+  return new Promise(resolve => {
+    const numCh = channels.length;
+    function f2i(f32) {
+      const i16 = new Int16Array(f32.length);
+      for (let n = 0; n < f32.length; n++) {
+        const s = f32[n] < -1 ? -1 : f32[n] > 1 ? 1 : f32[n];
+        i16[n] = s < 0 ? (s * 0x8000) | 0 : (s * 0x7FFF) | 0;
+      }
+      return i16;
+    }
+    const enc = new lamejs.Mp3Encoder(numCh === 1 ? 1 : 2, sr, 192);
+    const bl = 1152, data = [];
+    const L = f2i(channels[0]), R = numCh > 1 ? f2i(channels[1]) : L;
+    for (let i = 0; i < length; i += bl) {
+      const e = numCh === 1
+        ? enc.encodeBuffer(L.subarray(i, i + bl))
+        : enc.encodeBuffer(L.subarray(i, i + bl), R.subarray(i, i + bl));
+      if (e.length > 0) data.push(e); // Int8Array 래핑 제거
+    }
+    const fl = enc.flush();
+    if (fl.length > 0) data.push(fl);
+    resolve(new Blob(data, { type: 'audio/mp3' }));
+  });
+}
+
+// ── Web Audio mixer
+function startMixer(offset) {
+  if (!actx || !cleanBuffer || !noiseBuffer) return;
+  stopSources();
+
+  // Clean track → destination
+  srcClean = actx.createBufferSource();
+  srcClean.buffer = cleanBuffer;
+  srcClean.connect(actx.destination);
+
+  // Noise track → gainNode → destination
+  gainNoise = actx.createGain();
+  gainNoise.gain.value = VOL_STEPS[currentStepIdx];
+  srcNoise = actx.createBufferSource();
+  srcNoise.buffer = noiseBuffer;
+  srcNoise.connect(gainNoise);
+  gainNoise.connect(actx.destination);
+
+  mixOffset = offset;
+  mixStartTime = actx.currentTime;
+  srcClean.start(0, offset);
+  srcNoise.start(0, offset);
+
+  // Guard: only fire onEnded if we're still the active playing session
+  const thisSrc = srcClean;
+  srcClean.onended = () => {
+    if (isPlaying && srcClean === thisSrc) onEnded();
+  };
+
+  isPlaying = true;
+  cancelAnimationFrame(rafId);
+  rafTick();
+}
+
+function stopSources() {
+  try { srcClean && srcClean.stop(); } catch(e) {}
+  try { srcNoise && srcNoise.stop(); } catch(e) {}
+  srcClean = null; srcNoise = null; gainNoise = null;
+}
+
+function stopMixer() {
+  cancelAnimationFrame(rafId);
+  stopSources();
+  isPlaying = false;
+}
+
+function currentPosition() {
+  if (!isPlaying) return mixOffset;
+  return mixOffset + (actx.currentTime - mixStartTime);
+}
+
+function rafTick() {
+  updateHead();
+  if (isPlaying) rafId = requestAnimationFrame(rafTick);
+}
+
+// ── Preview
+function showPreview(filename) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('playerFn').textContent = filename;
+  pendingStepIdx = currentStepIdx;
+  mixOffset = 0;
+
+  const tw = document.getElementById('nTicks'); tw.innerHTML = '';
+  const jl = document.getElementById('jumpList'); jl.innerHTML = '';
+  pendingTimestamps.forEach((s, i) => {
+    const pct = totalDuration > 0 ? (s / totalDuration) * 100 : 0;
+    const tick = document.createElement('div');
+    tick.className = 'n-tick'; tick.style.left = pct + '%';
+    tick.innerHTML = `<div class="n-tick-lbl">#${i+1}</div>`;
+    tw.appendChild(tick);
+    const btn = document.createElement('button');
+    btn.className = 'j-btn'; btn.textContent = `#${i+1}  ${fmt(s)}`;
+    btn.onclick = () => seekTo(Math.max(0, s - 2));
+    jl.appendChild(btn);
+  });
+
+  const tl = document.getElementById('tsList'); tl.innerHTML = '';
+  pendingTimestamps.forEach(s => {
+    const d = document.createElement('div'); d.className = 'ts-line'; d.textContent = fmt(s);
+    tl.appendChild(d);
+  });
+
+  document.getElementById('totT').textContent = fmt(totalDuration);
+  document.getElementById('curT').textContent = '00:00';
+  document.getElementById('seekFill').style.width = '0%';
+  document.getElementById('seekHandle').style.left = '0%';
+
+  ['playerCard','tsCard','confirmCard'].forEach(id => document.getElementById(id).style.display = '');
+}
+
+function seekTo(t) {
+  const wasPlaying = isPlaying;
+  isPlaying = false;        // mark stopped before stopSources so onended callback is ignored
+  cancelAnimationFrame(rafId);
+  stopSources();
+  mixOffset = Math.max(0, Math.min(t, totalDuration));
+  if (wasPlaying) {
+    startMixer(mixOffset);
+  } else {
+    updateHead();
+  }
+}
+
+function updateHead() {
+  const pos = Math.min(currentPosition(), totalDuration);
+  const pct = totalDuration > 0 ? (pos / totalDuration) * 100 : 0;
+  document.getElementById('seekFill').style.width = pct + '%';
+  document.getElementById('seekHandle').style.left = pct + '%';
+  document.getElementById('curT').textContent = fmt(pos);
+}
+
+function onEnded() {
+  isPlaying = false;
+  mixOffset = 0;
+  cancelAnimationFrame(rafId);
+  updateHead();
+  document.getElementById('playBtn').classList.remove('playing');
+  document.getElementById('iPlay').style.display = '';
+  document.getElementById('iPause').style.display = 'none';
+}
+
+async function togglePlay() {
+  if (!cleanBuffer) return;
+  const btn = document.getElementById('playBtn');
+  if (isPlaying) {
+    // Pause — record current position first
+    mixOffset = currentPosition();
+    isPlaying = false;
+    cancelAnimationFrame(rafId);
+    stopSources();
+    btn.classList.remove('playing');
+    document.getElementById('iPlay').style.display = '';
+    document.getElementById('iPause').style.display = 'none';
+  } else {
+    // Resume — must await context resume before starting sources
+    if (actx.state === 'suspended') await actx.resume();
+    startMixer(mixOffset);
+    btn.classList.add('playing');
+    document.getElementById('iPlay').style.display = 'none';
+    document.getElementById('iPause').style.display = '';
+  }
+}
+
+function handleSeek(e) {
+  if (!cleanBuffer || totalDuration === 0) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  seekTo(pct * totalDuration);
+}
+
+function copyTs() {
+  navigator.clipboard.writeText(pendingTimestamps.map(s => fmt(s)).join('\n')).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('ok'); btn.innerHTML = '✓ 복사됨';
+    setTimeout(() => { btn.classList.remove('ok'); btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> 복사'; }, 2000);
+  });
+}
+
+function buildTxt() {
+  const title    = document.getElementById('songTitle').value.trim();
+  const from_    = document.getElementById('recipient').value.trim();
+  const to_      = document.getElementById('receiver').value.trim();
+  const reason   = document.getElementById('reason').value.trim();
+  const dateStr  = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;
+  })();
+  const positions = pendingTimestamps.map(s => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${String(sec).padStart(2,'0')}`;
+  }).join('\n');
+
+  return [
+    `곡명: ${title || '—'}`,
+    `보내는 곳: ${from_ || '—'}`,
+    `받는 곳: ${to_ || '—'}`,
+    `반출 일자: ${dateStr}`,
+    `반출 사유: ${reason || '—'}`,
+    `노이즈 삽입 위치:`,
+    positions,
+  ].join('\n');
+}
+
+async function confirmDl() {
+  if (!rawChannels) return;
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px"></span>MP3 생성 중...';
+  // 안내 문구 표시
+  document.getElementById('dlNotice').style.display = 'block';
+  await yield_(); // UI가 스피너를 실제로 그리도록 양보
+  const blob = await buildBlob(VOL_STEPS[currentStepIdx]);
+  pendingBlob = blob;
+
+  // MP3 다운로드
+  dlBlob(blob, pendingFilename);
+
+  // TXT 다운로드 (MP3 파일명에서 .mp3 → .txt)
+  const txtName = pendingFilename.replace(/\.mp3$/, '.txt');
+  const txtBlob = new Blob([buildTxt()], { type: 'text/plain;charset=utf-8' });
+  dlBlob(txtBlob, txtName);
+
+  // 결과 패널 표시
+  document.getElementById('dlMp3Name').textContent = pendingFilename;
+  document.getElementById('dlTxtName').textContent = txtName;
+  document.getElementById('dlResult').classList.add('show');
+
+  showToast('MP3 + TXT 다운로드 완료', 'ok');
+  document.getElementById('dlNotice').style.display = 'none';
+  btn.innerHTML = '✓ 저장 완료';
+  setTimeout(() => { btn.disabled = false; btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round"/></svg> 다운로드 확정'; }, 2500);
+}
+function dlBlob(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+
+function retry() {
+  stopMixer();
+  cleanBuffer = null; noiseBuffer = null;
+  pendingBlob = null; rawChannels = null; pendingTimestamps = [];
+  audioFile = null; audioBuffer = null; beepCache = null;
+  mixOffset = 0;
+  document.getElementById('fileRow').classList.remove('show');
+  document.getElementById('upIcon').style.display = '';
+  document.getElementById('upT').style.display = '';
+  document.getElementById('upS').style.display = '';
+  document.getElementById('upZone').classList.remove('has');
+  document.getElementById('fi').value = '';
+  document.getElementById('songTitle').value = '';
+  document.getElementById('recipient').value = '';
+  document.getElementById('receiver').value = '';
+  document.getElementById('reason').value = '';
+  noiseCount = 7; document.getElementById('cNum').textContent = '7';
+  currentStepIdx = 3; noisePositions = [];
+  document.querySelectorAll('.step-btn').forEach((b, i) => b.classList.toggle('active', i === 3));
+  updateFn();
+  ['playerCard','tsCard','confirmCard'].forEach(id => document.getElementById(id).style.display = 'none');
+  document.getElementById('dlResult').classList.remove('show');
+  document.getElementById('emptyState').style.display = '';
+  setProcState(false); document.getElementById('prog').classList.remove('show');
+}
+function setProcState(active) {
+  const btn = document.getElementById('procBtn'); btn.disabled = active;
+  btn.innerHTML = active ? '처리 중...' : '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> 노이즈 삽입 시작';
+  document.getElementById('prog').classList.toggle('show', active);
+}
+function setP(lbl, sub) {
+  document.getElementById('pLbl').textContent = lbl;
+  document.getElementById('pSub').textContent = sub;
+}
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast'); t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+function fmt(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`; }
+function fmtB(b) { return b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
+function ds() { const d = new Date(); return `${String(d.getFullYear()).slice(2)}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`; }
+
+checkReady();
+</script>
+</body>
+</html>
