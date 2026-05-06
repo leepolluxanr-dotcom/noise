@@ -834,7 +834,7 @@ async function logToSheet() {
     const positions = pendingTimestamps.map(s => {
       const m = Math.floor(s / 60);
       return `${m}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
-    }).join(', ');
+    }).join(' / ');
     const params = new URLSearchParams({
       date:      dateStr,
       title:     document.getElementById('songTitle').value.trim(),
