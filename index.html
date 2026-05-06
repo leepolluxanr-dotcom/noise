@@ -825,29 +825,25 @@ async function confirmDl() {
   btn.innerHTML = '✓ 저장 완료';
   setTimeout(() => { btn.disabled = false; btn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke-linecap="round"/><polyline points="7 10 12 15 17 10" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke-linecap="round"/></svg> 다운로드 확정'; }, 2500);
 }
-const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyu5BqvY3vQ359Mk250-qWIPZeSzt5lJ4KJnVG7bhmRwzXsFx9YMf0ZSuuMAsHKq8FP/exec';
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbyf4xmXcmkC70xwu_kTYJX6-ZN2FlY_KV9-sYvBXkUGyf-yrCDuG_3p99aUrMmuY5hq/exec';
 
 async function logToSheet() {
   try {
     const d = new Date();
     const dateStr = `${d.getFullYear()}년 ${String(d.getMonth()+1).padStart(2,'0')}월 ${String(d.getDate()).padStart(2,'0')}일`;
-    const payload = {
+    const positions = pendingTimestamps.map(s => {
+      const m = Math.floor(s / 60);
+      return `${m}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
+    }).join(', ');
+    const params = new URLSearchParams({
       date:      dateStr,
       title:     document.getElementById('songTitle').value.trim(),
       from:      document.getElementById('recipient').value.trim(),
       to:        document.getElementById('receiver').value.trim(),
       reason:    document.getElementById('reason').value.trim(),
-      positions: pendingTimestamps.map(s => {
-        const m = Math.floor(s / 60);
-        return `${m}:${String(Math.floor(s % 60)).padStart(2,'0')}`;
-      }).join(', ')
-    };
-    await fetch(SHEET_URL, {
-      method: 'POST',
-      mode: 'no-cors', // Apps Script는 CORS 헤더 미지원, no-cors로 전송
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      positions: positions
     });
+    await fetch(`${SHEET_URL}?${params.toString()}`, { method: 'GET' });
   } catch(e) {
     console.warn('시트 기록 실패:', e);
   }
